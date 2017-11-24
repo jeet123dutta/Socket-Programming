@@ -1,0 +1,213 @@
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+	<title>My Chat Application</title>
+
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+		<script src="/socket.io/socket.io.js"></script>
+
+		<script type="text/javascript">
+		var my_username = '';
+
+		function send_individual_msg(id)
+		{
+			//alert(id);
+			//alert(my_username);
+			socket.emit('check_user', my_username, id);
+			//socket.emit('msg_user', id, my_username, prompt("Type your message:"));
+		}
+			var socket = io.connect('http://localhost:3000');	
+			// on connection to server, ask for user's name with an anonymous callback
+			socket.on('connect', function(){
+				// call the server-side function 'adduser' and send one parameter (value of prompt)
+				socket.emit('adduser', prompt("What's your name?"));
+				socket.emit('addgroup', prompt("What's your group?"));
+			});
+
+
+			// listener, whenever the server emits 'msg_user_handle', this updates the chat body
+			socket.on('msg_user_handle', function (username, data) {
+				$( 'h1' ).remove();
+				var html = '<div class="col-md-8 customer" style="background-color:powderblue;">' +
+							'<strong>'+username+': '+data + '</strong>' +
+							'</div>';
+				$('#conversation').append(html);			
+			});
+			
+			// listener, whenever the server emits 'msg_user_found'
+			socket.on('msg_user_found', function (username) {
+				//alert(username);
+				socket.emit('msg_user', username, my_username, prompt("Type your message:"));
+			});
+
+			socket.on('updaterooms', function(rooms, current_room) {
+				/*$('#rooms').empty();
+				$('#rooms').append('<div><a href="#" onclick="bcasting(\''+'Broadcast'+'\')">' + 'Broadcast' + '</a></div>');
+				$.each(rooms, function(key, value) {
+					if(value == current_room){
+						$('#rooms').append('<div>' + value + '</div>');
+					}
+					else {
+						$('#rooms').append('<div><a href="#" onclick="switchRoom(\''+value+'\')">' + value + '</a></div>');
+					}
+				});*/
+			});
+
+			function switchRoom(){
+				socket.emit('switchRoom', prompt("Enter the room you want to enter "));
+			}
+
+			function bcasting(link){
+				socket.emit('sendBroadCast',prompt("Type Your Message"));
+			}
+			// listener, whenever the server emits 'updatechat', this updates the chat body
+			socket.on('updatechat', function (username, data) {
+				$( 'h1' ).remove();
+				if(username==my_username) {
+					var html = '<div class="col-md-8 agent">' +
+							'<strong>'+username+': '+data + '</strong>' +
+							'</div>';
+				}
+				else if (username=="SERVER") {
+					var html = '<div class="col-md-8 server1">' +
+							'<strong>'+username+': '+data + '</strong>' +
+							'</div>';
+				}
+				else {
+					var html = '<div class="col-md-8 customer">' +
+							'<strong>'+username+': '+data + '</strong>' +
+							'</div>';
+				}
+				//$("div.msg-wrapper").append(html);
+				//$('#conversation').append('<b>'+username + ':</b> ' + data + '<br>');
+				$('#conversation').append(html);
+			});
+			
+			// listener, whenever the server emits 'store_username', this updates the username
+			socket.on('store_username', function (username) {
+				my_username = username;
+			});	
+			// listener, whenever the server emits 'updateusers', this updates the username list
+			socket.on('updateusers', function(data) {
+				//alert(data);
+				//console.log(data);
+				$('#users').empty();
+				$( 'h5' ).remove();
+				$('#users').append('<b><div style="cursor:pointer; display: list-item; list-style-type: disc;list-style-position: inside;" onclick="bcasting(\''+'Broadcast'+'\')">' + 'Broadcast' + '</div></b>');
+				$('#users').append('<br>');
+				$.each(data, function(key, value) {
+					if(key==my_username)
+					{
+						$('#users').append('<div style="display: list-item; list-style-type: disc;list-style-position: inside;">' + my_username + '(You)' + '</div>');
+					}
+					else
+					{
+						$('#users').append('<b><div style="cursor:pointer; display: list-item; list-style-type: disc;list-style-position: inside;" onclick="send_individual_msg(\''+value+'\')">' + key + '</div></b>');
+					}
+					$('#users').append('<br>');
+				});
+			});
+			// on load of page
+			$(function(){
+				// when the client clicks SEND
+				$('#datasend').click( function(e) {
+					e.preventDefault();
+					var message = $('#data').val();
+					if(message == '' || jQuery.trim(message).length == 0)
+					return false;
+					$('#data').val('');
+					// tell server to execute 'sendchat' and send along one parameter
+					socket.emit('sendchat', message);
+				});
+				// when the client hits ENTER on their keyboard
+				$('#data').keypress(function(e) {
+					if(e.which == 13) {
+						$(this).blur();
+						//$('#datasend').focus().click();
+						$('#datasend').click();
+					}
+				});
+		})
+		</script>
+<style type="text/css">
+	
+	#conversation{
+		background-color: #ee82ee
+		float:left;
+		width:900px;
+		overflow-y: auto;
+		height: 390px;
+		margin-bottom: 25px;
+		margin-top: 10px;
+	}
+
+	.server1{
+		float: right;
+		font-size: 12px;
+	}
+
+	.customer  { 
+		color: blue;
+		background-color: #ddd;
+		padding: 5px 10px;
+		border-radius: 10px;
+		margin-bottom: 5px;
+	 }
+
+	.agent  {
+		text-align: right;
+		float: right;
+		color: #333;
+		background-color: #ddd;
+		padding: 5px 10px;
+		border-radius: 10px;
+		margin-bottom: 5px;
+	}
+
+</style>
+</head>
+<body style="background-color:powderblue;">
+			<div class="container-fluid">
+				<div class="well text-center">
+					<h1>Web Chat App</h1>		
+				</div>
+	 			
+	 			<div class="col-md-3 online">
+					<!--div style="float:left;width:100px;border-right:1px solid black;height:300px;padding:10px;overflow:scroll-y;"-->
+					<button id="changeRoom" value="SwitchRoom" onclick="switchRoom();" class="btn btn-success" >Change Group <span class="glyphicon glyphicon-send"></span> </button>
+				</br></br>
+					<b>Online Users</b>
+					<hr>
+					<div style="overflow-y: auto; width: 300px; height: 450px;">
+						<h5 style="color:  #0b0303">Users yet to join</h5>
+						<div id="users"></div>
+					</div>
+				</div>
+					<div class="col-sm-6">
+						<div id="nomsg">
+							<h3 style="color:  #0b0303">Your conversation goes below!!</h3>
+							<div id="conversation"></div>
+						</div>
+					</div>
+						<!--div style="float:left;width:550px;height:250px;overflow:scroll-y;padding:10px;"-->
+					<div class="col-sm-8">
+						<form action="" method="POST">
+
+			  				<div class="form-group">
+								<textarea id="data" class="message form-control" rows="3" style="width:900px;" class="message form-control"  placeholder="Message"></textarea>
+							</div>
+									<!--input id="data" style="width:200px;" />
+									<input type="button" id="datasend" value="send" /-->
+							<button type="submit" id="datasend" value="send" class="btn btn-success" >Send <span class="glyphicon glyphicon-send"></span> </button>
+						</form>
+					</div>
+			</div>
+</body>
+</html>
